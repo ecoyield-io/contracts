@@ -23,7 +23,7 @@ contract VestingMerkles {
         merkleProof2 = new bytes32[](2);
         merkleProof2[0] = 0x6a9198834da4a56f6401053b95eb60aaa5cdb9a6bc2c5c124c77bd8f4a6ec557;
         merkleProof2[1] = 0xcf3c6863bafbe17e6c7ddb9cd7e0aa1851d06a1f17b60825e6991f59c408219f;
-        
+
         merkleProof3 = new bytes32[](2);
         merkleProof3[0] = 0x944d16a73645b412501a366f0742db0ae0003a1eb02d7935239893fc720f439f;
         merkleProof3[1] = 0xcf3c6863bafbe17e6c7ddb9cd7e0aa1851d06a1f17b60825e6991f59c408219f;

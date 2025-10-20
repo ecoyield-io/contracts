@@ -56,7 +56,7 @@ contract EcoYieldTokenVestingTest is Test {
         merkleProof2 = new bytes32[](2);
         merkleProof2[0] = 0xc7b7ae57e5237ed40dcc17165f98e2bb1761c63c9f0b61b33b076962436c1a56;
         merkleProof2[1] = 0x0c70ee9bb261c4a663607c7fea30f02cc4783e22989ca24eb239bc1b3026af96;
-        
+
         merkleProof3 = new bytes32[](1);
         merkleProof3[0] = 0xc5ffcb879a592bd1ed8d67b5d06d8880c67cf97b0121170bd8337223b4641e53;
 
