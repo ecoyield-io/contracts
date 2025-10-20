@@ -44,18 +44,11 @@ contract TokenVesting is Context, Ownable, ReentrancyGuard, Pausable {
 
     // Event emitted when a new vesting bucket is created
     event VestingBucketCreated(
-        bytes32 indexed bucketId,
-        bytes32 merkleRoot,
-        uint256 totalAllocatedAmount,
-        string proofsCID
+        bytes32 indexed bucketId, bytes32 merkleRoot, uint256 totalAllocatedAmount, string proofsCID
     );
 
     // Event emitted when a beneficiary claims their vested tokens
-    event TokensClaimed(
-        bytes32 indexed bucketId,
-        address indexed beneficiary,
-        uint256 amount
-    );
+    event TokensClaimed(bytes32 indexed bucketId, address indexed beneficiary, uint256 amount);
 
     // Event emitted when the owner performs an emergency withdrawal
     event EmergencyWithdrawal(address indexed owner, uint256 amount);
@@ -75,14 +68,11 @@ contract TokenVesting is Context, Ownable, ReentrancyGuard, Pausable {
     error BucketMustExist();
     error InvalidTimestamp(uint256 timestamp);
 
-
     /**
      * @notice Constructor to initialize the vesting contract.
      * @param _tokenAddress The address of the ERC20 token to be vested.
      */
-    constructor(
-        address _tokenAddress
-    ) Ownable(msg.sender) {
+    constructor(address _tokenAddress) Ownable(msg.sender) {
         if (_tokenAddress == address(0)) revert ZeroAddress();
         TOKEN = IERC20(_tokenAddress);
     }
@@ -138,17 +128,16 @@ contract TokenVesting is Context, Ownable, ReentrancyGuard, Pausable {
      * @param totalAllocation The total token amount allocated to the beneficiary.
      * @param merkleProof The Merkle proof to verify the beneficiary's inclusion.
      */
-    function claim(
-        address account,
-        bytes32 bucketId,
-        uint256 totalAllocation,
-        bytes32[] calldata merkleProof
-    ) external nonReentrant whenNotPaused {
+    function claim(address account, bytes32 bucketId, uint256 totalAllocation, bytes32[] calldata merkleProof)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         VestingBucket storage bucket = vestingBuckets[bucketId];
         if (!bucket.initialized) revert BucketDoesNotExist();
 
         // Verify the beneficiary's allocation using the Merkle proof.
-        bytes32 leaf = keccak256(abi.encodePacked(account, totalAllocation));
+        bytes32 leaf = keccak256(abi.encode(account, totalAllocation));
         if (!MerkleProof.verify(merkleProof, bucket.merkleRoot, leaf)) {
             revert InvalidMerkleProof();
         }
@@ -217,11 +206,11 @@ contract TokenVesting is Context, Ownable, ReentrancyGuard, Pausable {
      * @param _totalAllocation The total allocation for the beneficiary.
      * @return The amount of tokens the beneficiary can currently claim.
      */
-    function getReleasableAmount(
-        bytes32 _bucketId,
-        address _beneficiary,
-        uint256 _totalAllocation
-    ) public view returns (uint256) {
+    function getReleasableAmount(bytes32 _bucketId, address _beneficiary, uint256 _totalAllocation)
+        public
+        view
+        returns (uint256)
+    {
         VestingBucket memory bucket = vestingBuckets[_bucketId];
         if (!bucket.initialized) {
             return 0;
@@ -242,13 +231,9 @@ contract TokenVesting is Context, Ownable, ReentrancyGuard, Pausable {
      * @param _totalAllocation The total allocation for a single beneficiary.
      * @return The total amount of vested tokens for the beneficiary at the current time.
      */
-    function _calculateVested(
-        VestingBucket memory _bucket,
-        uint256 _totalAllocation
-    ) internal view returns (uint256) {
+    function _calculateVested(VestingBucket memory _bucket, uint256 _totalAllocation) internal view returns (uint256) {
         // 1. Calculate the TGE amount. This is available from the start.
-        uint256 immediateAmount = (_totalAllocation *
-            _bucket.immediateUnlockBps) / 10000;
+        uint256 immediateAmount = (_totalAllocation * _bucket.immediateUnlockBps) / 10000;
 
         // 2. Calculate the portion subject to linear vesting.
         uint256 linearlyVestedAmount = 0;
@@ -266,9 +251,7 @@ contract TokenVesting is Context, Ownable, ReentrancyGuard, Pausable {
                     linearlyVestedAmount = remainingAllocation;
                 } else {
                     // Calculate linear vesting on the remaining part.
-                    linearlyVestedAmount =
-                        (remainingAllocation * timeElapsed) /
-                        _bucket.durationSeconds;
+                    linearlyVestedAmount = (remainingAllocation * timeElapsed) / _bucket.durationSeconds;
                 }
             }
         }

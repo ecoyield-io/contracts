@@ -6,6 +6,7 @@ import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transpa
 import {EcoYieldTokenVesting, VestingBucketData} from "../src/EcoYieldTokenVesting.sol";
 import {TokenVesting} from "../src/TokenVesting.sol";
 import {EcoYieldToken} from "../src/EcoYieldToken.sol";
+import {VestingMerkles} from "./VestingMerkles.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
@@ -13,49 +14,51 @@ contract EcoYieldTokenVestingTest is Test {
     EcoYieldTokenVesting public tokenVesting;
     EcoYieldToken public ecoYieldToken;
 
+    address public beneficiary1 = address(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+    uint256 public totalAllocation1 = 1000e18;
+
+    address public beneficiary2 = address(0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC);
+    uint256 public totalAllocation2 = 2000e18;
+
+    address public beneficiary3 = address(0x90F79bf6EB2c4f870365E785982E1f101E93b906);
+    uint256 public totalAllocation3 = 3000e18;
+
+    bytes32 public merkleRoot = 0xb0e86cd6d658e82f00ff51fbfc32a33916ed20be027462e5b1b24f084cb49f43;
+    bytes32[] public merkleProof1;
+    bytes32[] public merkleProof2;
+    bytes32[] public merkleProof3;
+
     address public owner;
     address public nonOwner;
 
-    address public beneficiary1;
-    address public beneficiary2;
-
     address public proxyAdmin;
-
-    bytes32 public merkleRoot;
-    bytes32[] public merkleProof1;
-    bytes32[] public merkleProof2;
-
-    uint256 public totalAllocation1 = 1000e18;
-    uint256 public totalAllocation2 = 2000e18;
-    uint256 public totalAllocation3 = 3000e18;
 
     function setUp() public {
         owner = makeAddr("owner");
         nonOwner = makeAddr("nonOwner");
 
-        beneficiary1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-        beneficiary2 = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
-        beneficiary3 = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
-
         proxyAdmin = makeAddr("proxyAdmin");
-
         // 1. Deploy the EcoYieldToken implementation
         EcoYieldToken implementation = new EcoYieldToken();
         // 2. Prepare the initializer function call for EcoYieldToken
         bytes memory data = abi.encodeWithSelector(EcoYieldToken.initialize.selector, owner);
         // 3. Deploy the proxy for EcoYieldToken and initialize it
-        ecoYieldToken = EcoYieldToken(address(new TransparentUpgradeableProxy(address(implementation), proxyAdmin, data)));
+        ecoYieldToken =
+            EcoYieldToken(address(new TransparentUpgradeableProxy(address(implementation), proxyAdmin, data)));
 
         vm.prank(owner);
         tokenVesting = new EcoYieldTokenVesting(address(ecoYieldToken));
 
-        merkleRoot = 0xb6ca1073130689fdbf9763129a6b4557851bb77a371eae96598fdf90ec18e97c;
+        merkleProof1 = new bytes32[](2);
+        merkleProof1[0] = 0x55adace9df60e28ec414bb4747100128ce1823e65e7e9dfdb8eeed9eed1a304c;
+        merkleProof1[1] = 0x0c70ee9bb261c4a663607c7fea30f02cc4783e22989ca24eb239bc1b3026af96;
 
-        merkleProof1 = new bytes32[](1);
-        merkleProof1[0] = 0x9b0bc27a9e8f6a8a4b2e92b71ac31b44ef9bd5a54f150ed7b7c2668c6b9be039;
-
-        merkleProof2 = new bytes32[](1);
-        merkleProof2[0] = 0x208697df1b2d4c083944c10909fe1ed6e99c1eaccff33ba129464b28f8245f01;
+        merkleProof2 = new bytes32[](2);
+        merkleProof2[0] = 0xc7b7ae57e5237ed40dcc17165f98e2bb1761c63c9f0b61b33b076962436c1a56;
+        merkleProof2[1] = 0x0c70ee9bb261c4a663607c7fea30f02cc4783e22989ca24eb239bc1b3026af96;
+        
+        merkleProof3 = new bytes32[](1);
+        merkleProof3[0] = 0xc5ffcb879a592bd1ed8d67b5d06d8880c67cf97b0121170bd8337223b4641e53;
 
         vm.prank(owner);
         ecoYieldToken.mint(address(tokenVesting), 1_000_000_000 ether);
@@ -92,12 +95,14 @@ contract EcoYieldTokenVestingTest is Test {
         vm.prank(owner);
         tokenVesting.createVestingBuckets(buckets);
 
-        (bool initialized1, bytes32 merkleRootValue1, , , uint256 immediateUnlockBpsValue1, , , ) = tokenVesting.vestingBuckets(bucketId1);
+        (bool initialized1, bytes32 merkleRootValue1,,, uint256 immediateUnlockBpsValue1,,,) =
+            tokenVesting.vestingBuckets(bucketId1);
         assertTrue(initialized1, "Bucket 1 should be initialized");
         assertEq(merkleRootValue1, merkleRoot, "Bucket 1 merkle root mismatch");
         assertEq(immediateUnlockBpsValue1, 1000, "Bucket 1 immediate unlock bps mismatch");
 
-        (bool initialized2, bytes32 merkleRootValue2, , , uint256 immediateUnlockBpsValue2, , , ) = tokenVesting.vestingBuckets(bucketId2);
+        (bool initialized2, bytes32 merkleRootValue2,,, uint256 immediateUnlockBpsValue2,,,) =
+            tokenVesting.vestingBuckets(bucketId2);
         assertTrue(initialized2, "Bucket 2 should be initialized");
         assertEq(merkleRootValue2, merkleRoot, "Bucket 2 merkle root mismatch");
         assertEq(immediateUnlockBpsValue2, 2000, "Bucket 2 immediate unlock bps mismatch");
@@ -129,16 +134,7 @@ contract EcoYieldTokenVestingTest is Test {
         // Create one bucket first
         bytes32 bucketId1 = keccak256(abi.encodePacked("BUCKET_1"));
         vm.prank(owner);
-        tokenVesting.createVestingBucket(
-            bucketId1,
-            merkleRoot,
-            1000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "cid1"
-        );
+        tokenVesting.createVestingBucket(bucketId1, merkleRoot, 1000e18, 1000, 30, 365, block.timestamp + 1, "cid1");
 
         // Prepare an array with a new bucket and the existing one
         VestingBucketData[] memory buckets = new VestingBucketData[](2);
@@ -178,8 +174,8 @@ contract EcoYieldTokenVestingTest is Test {
             merkleRoot,
             totalAllocation1 + totalAllocation2,
             1000, // 10% immediate unlock
-            30,   // 30-day cliff
-            365,  // 365-day vesting
+            30, // 30-day cliff
+            365, // 365-day vesting
             block.timestamp + 1,
             "cid1"
         );
@@ -191,7 +187,9 @@ contract EcoYieldTokenVestingTest is Test {
         vm.prank(beneficiary1);
         tokenVesting.claim(beneficiary1, bucketId, totalAllocation1, merkleProof1);
 
-        assertEq(ecoYieldToken.balanceOf(beneficiary1), expectedVestedAmount, "Beneficiary should receive the TGE tokens");
+        assertEq(
+            ecoYieldToken.balanceOf(beneficiary1), expectedVestedAmount, "Beneficiary should receive the TGE tokens"
+        );
     }
 
     function test_FailClaim_InvalidProof() public {
@@ -203,8 +201,8 @@ contract EcoYieldTokenVestingTest is Test {
             merkleRoot,
             totalAllocation1 + totalAllocation2,
             1000, // 10% immediate unlock
-            30,   // 30-day cliff
-            365,  // 365-day vesting
+            30, // 30-day cliff
+            365, // 365-day vesting
             block.timestamp + 1,
             "cid1"
         );
@@ -232,8 +230,8 @@ contract EcoYieldTokenVestingTest is Test {
             merkleRoot,
             totalAllocation1 + totalAllocation2,
             1000, // 10% immediate unlock
-            30,   // 30-day cliff
-            365,  // 365-day vesting
+            30, // 30-day cliff
+            365, // 365-day vesting
             block.timestamp + 1,
             "cid1"
         );
@@ -242,7 +240,11 @@ contract EcoYieldTokenVestingTest is Test {
         uint256 expectedTGE = (totalAllocation1 * 1000) / 10000;
         vm.prank(beneficiary1);
         tokenVesting.claim(beneficiary1, bucketId, totalAllocation1, merkleProof1);
-        assertEq(ecoYieldToken.balanceOf(beneficiary1), expectedTGE, "Beneficiary should only receive the immediate unlock amount");
+        assertEq(
+            ecoYieldToken.balanceOf(beneficiary1),
+            expectedTGE,
+            "Beneficiary should only receive the immediate unlock amount"
+        );
 
         // 2. Attempt to claim again before cliff, should fail
         vm.warp(block.timestamp + 20 days);
@@ -260,8 +262,8 @@ contract EcoYieldTokenVestingTest is Test {
             merkleRoot,
             totalAllocation1 + totalAllocation2,
             1000, // 10% immediate unlock
-            30,   // 30-day cliff
-            365,  // 365-day vesting
+            30, // 30-day cliff
+            365, // 365-day vesting
             block.timestamp + 1,
             "cid1"
         );
@@ -272,6 +274,8 @@ contract EcoYieldTokenVestingTest is Test {
         vm.prank(beneficiary1);
         tokenVesting.claim(beneficiary1, bucketId, totalAllocation1, merkleProof1);
 
-        assertEq(ecoYieldToken.balanceOf(beneficiary1), totalAllocation1, "Beneficiary should receive the total allocation");
+        assertEq(
+            ecoYieldToken.balanceOf(beneficiary1), totalAllocation1, "Beneficiary should receive the total allocation"
+        );
     }
 }

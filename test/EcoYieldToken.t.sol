@@ -5,7 +5,9 @@ import {Test, console} from "forge-std/Test.sol";
 import {EcoYieldToken} from "../src/EcoYieldToken.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {ERC20CappedUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20CappedUpgradeable.sol";
+import {
+    ERC20CappedUpgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20CappedUpgradeable.sol";
 
 contract EcoYieldTokenTest is Test {
     EcoYieldToken public ecoYieldToken;
@@ -28,7 +30,8 @@ contract EcoYieldTokenTest is Test {
         bytes memory data = abi.encodeWithSelector(EcoYieldToken.initialize.selector, owner);
 
         // 3. Deploy the proxy and initialize it
-        ecoYieldToken = EcoYieldToken(address(new TransparentUpgradeableProxy(address(implementation), proxyAdmin, data)));
+        ecoYieldToken =
+            EcoYieldToken(address(new TransparentUpgradeableProxy(address(implementation), proxyAdmin, data)));
     }
 
     function test_InitialState() public view {
@@ -64,7 +67,7 @@ contract EcoYieldTokenTest is Test {
         vm.expectRevert(abi.encodeWithSelector(ERC20CappedUpgradeable.ERC20ExceededCap.selector, amount, cap));
         ecoYieldToken.mint(user1, amount);
     }
-    
+
     function test_Mint_ExactlyCap() public {
         uint256 cap = ecoYieldToken.cap();
         vm.prank(owner);

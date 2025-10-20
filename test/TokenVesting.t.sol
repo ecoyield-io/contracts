@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {Test, console} from "forge-std/Test.sol";
 import {TokenVesting} from "../src/TokenVesting.sol";
-import {VestingMerkles} from "../VestingMerkles.sol";
+import {VestingMerkles} from "./VestingMerkles.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -25,13 +25,22 @@ contract TokenVestingTest is Test {
 
     bytes32 public bucketId;
 
-    VestingMerkles public merkles;
+   address public beneficiary1 = address(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
+    uint256 public totalAllocation1 = 1000e18;
+
+    address public beneficiary2 = address(0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC);
+    uint256 public totalAllocation2 = 2000e18;
+
+    address public beneficiary3 = address(0x90F79bf6EB2c4f870365E785982E1f101E93b906);
+    uint256 public totalAllocation3 = 3000e18;
+
+    bytes32 public merkleRoot = 0xb0e86cd6d658e82f00ff51fbfc32a33916ed20be027462e5b1b24f084cb49f43;
+    bytes32[] public merkleProof1;
+    bytes32[] public merkleProof2;
+    bytes32[] public merkleProof3;
 
     function setUp() public {
         owner = makeAddr("owner");
-        beneficiary1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-        beneficiary2 = 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC;
-        beneficiary3 = 0x90F79bf6EB2c4f870365E785982E1f101E93b906;
         nonOwner = beneficiary1; // Use beneficiary1 as a non-owner for tests
 
         mockToken = new MockERC20();
@@ -39,20 +48,16 @@ contract TokenVestingTest is Test {
         vm.prank(owner);
         tokenVesting = new TokenVesting(address(mockToken));
 
-        merkles = new VestingMerkles();
-
-        merkleRoot = 0xf479d162ade2a58f66e80ac1587cac196a6435655bac14784489cac0ebb238ea;
-
         merkleProof1 = new bytes32[](2);
-        merkleProof1[0] = 0x465f8d63e58fdf557d0b762169052f2e16c240e88108e3f02440af9cda902b78;
-        merkleProof1[1] = 0xeb8a54686070e884200c17367b4c93a2ce1fd7916ee7257e26dda2fdf584b6f7;
+        merkleProof1[0] = 0x55adace9df60e28ec414bb4747100128ce1823e65e7e9dfdb8eeed9eed1a304c;
+        merkleProof1[1] = 0x0c70ee9bb261c4a663607c7fea30f02cc4783e22989ca24eb239bc1b3026af96;
 
         merkleProof2 = new bytes32[](2);
-        merkleProof2[0] = 0xf304e19650a2b0844ff39b6b8ed79bc463d08a3e1783fde758d5378d1860246c;
-        merkleProof2[1] = 0xeb8a54686070e884200c17367b4c93a2ce1fd7916ee7257e26dda2fdf584b6f7;
-
+        merkleProof2[0] = 0xc7b7ae57e5237ed40dcc17165f98e2bb1761c63c9f0b61b33b076962436c1a56;
+        merkleProof2[1] = 0x0c70ee9bb261c4a663607c7fea30f02cc4783e22989ca24eb239bc1b3026af96;
+        
         merkleProof3 = new bytes32[](1);
-        merkleProof3[0] = 0x8d9a6b4b0172cf9e2a014fab787e7266cbb881f2cf70872eed9fd0a584ec5648;
+        merkleProof3[0] = 0xc5ffcb879a592bd1ed8d67b5d06d8880c67cf97b0121170bd8337223b4641e53;
 
         bucketId = keccak256(abi.encodePacked("TEAM_VESTING"));
 
@@ -76,7 +81,8 @@ contract TokenVestingTest is Test {
             "proofs_cid"
         );
 
-        (bool initialized, bytes32 merkleRootValue, , , uint256 immediateUnlockBpsValue, , , ) = tokenVesting.vestingBuckets(bucketId);
+        (bool initialized, bytes32 merkleRootValue,,, uint256 immediateUnlockBpsValue,,,) =
+            tokenVesting.vestingBuckets(bucketId);
         assertTrue(initialized);
         assertEq(merkleRootValue, merkleRoot);
         assertEq(immediateUnlockBpsValue, 1000);
@@ -127,20 +133,40 @@ contract TokenVestingTest is Test {
         assertEq(finalBalance, initialBalance + expectedAmount);
     }
 
+    function test_SimpleClaim() public {
+        bytes32 simpleMerkleRoot = 0xc7b7ae57e5237ed40dcc17165f98e2bb1761c63c9f0b61b33b076962436c1a56;
+        bytes32[] memory emptyProof = new bytes32[](0);
+
+        vm.prank(owner);
+        tokenVesting.createVestingBucket(
+            bucketId,
+            simpleMerkleRoot,
+            1000e18,
+            1000, // 10%
+            30,
+            365,
+            block.timestamp + 1,
+            "proofs_cid"
+        );
+
+        uint256 initialBalance = mockToken.balanceOf(beneficiary1);
+
+        vm.prank(beneficiary1);
+        tokenVesting.claim(beneficiary1, bucketId, totalAllocation1, emptyProof);
+
+        uint256 expectedAmount = (totalAllocation1 * 1000) / 10000;
+        uint256 finalBalance = mockToken.balanceOf(beneficiary1);
+
+        assertEq(finalBalance, initialBalance + expectedAmount);
+    }
+
     /// @notice This test confirms the security of the claiming process.
     /// It attempts a claim with an incorrect Merkle proof and expects the transaction
     /// to revert with a "Vesting: Invalid Merkle proof" error.
     function test_FailClaim_InvalidProof() public {
         vm.prank(owner);
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
 
         vm.prank(beneficiary1);
@@ -183,7 +209,7 @@ contract TokenVestingTest is Test {
         skip(2 days); // Total 31 days
         vm.prank(beneficiary1);
         tokenVesting.claim(beneficiary1, bucketId, totalAllocation1, merkleProof1);
-        (,,,,,,uint256 startTimestamp, uint256 durationSeconds) = tokenVesting.vestingBuckets(bucketId);
+        (,,,,,, uint256 startTimestamp, uint256 durationSeconds) = tokenVesting.vestingBuckets(bucketId);
         uint256 timeElapsed = block.timestamp - startTimestamp;
         uint256 vestedAmount = 100e18 + (900e18 * timeElapsed) / durationSeconds;
         assertEq(mockToken.balanceOf(beneficiary1), vestedAmount);
@@ -202,14 +228,7 @@ contract TokenVestingTest is Test {
     function test_EmergencyWithdraw() public {
         vm.prank(owner);
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
 
         vm.prank(owner);
@@ -235,14 +254,7 @@ contract TokenVestingTest is Test {
     function test_SetInitialReleasedAmounts() public {
         vm.prank(owner);
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
 
         address[] memory beneficiaries = new address[](1);
@@ -267,26 +279,12 @@ contract TokenVestingTest is Test {
     function test_FailCreateVestingBucket_AlreadyExists() public {
         vm.prank(owner);
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
         vm.prank(owner);
         vm.expectRevert(TokenVesting.BucketAlreadyExists.selector);
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
     }
 
@@ -294,60 +292,28 @@ contract TokenVestingTest is Test {
         vm.prank(owner);
         vm.expectRevert(TokenVesting.EmptyMerkleRoot.selector);
         tokenVesting.createVestingBucket(
-            bucketId,
-            bytes32(0),
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, bytes32(0), 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
     }
 
     function test_FailCreateVestingBucket_EmptyProofsCID() public {
         vm.prank(owner);
         vm.expectRevert(TokenVesting.EmptyProofsCID.selector);
-        tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            ""
-        );
+        tokenVesting.createVestingBucket(bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "");
     }
 
     function test_FailCreateVestingBucket_InvalidBps() public {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(TokenVesting.InvalidBps.selector, 10001));
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            10001,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 10001, 30, 365, block.timestamp + 1, "proofs_cid"
         );
     }
 
     function test_FailCreateVestingBucket_InvalidTimestamp() public {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(TokenVesting.InvalidTimestamp.selector, block.timestamp));
-        tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp,
-            "proofs_cid"
-        );
+        tokenVesting.createVestingBucket(bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp, "proofs_cid");
     }
 
     function test_FailClaim_NonExistentBucket() public {
@@ -381,14 +347,7 @@ contract TokenVestingTest is Test {
     function test_FailSetInitialReleasedAmounts_ArrayMismatch() public {
         vm.prank(owner);
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
 
         address[] memory beneficiaries = new address[](1);
@@ -416,14 +375,7 @@ contract TokenVestingTest is Test {
     function test_FailEmergencyWithdraw_NoBalance() public {
         vm.prank(owner);
         tokenVesting.createVestingBucket(
-            bucketId,
-            merkleRoot,
-            6000e18,
-            1000,
-            30,
-            365,
-            block.timestamp + 1,
-            "proofs_cid"
+            bucketId, merkleRoot, 6000e18, 1000, 30, 365, block.timestamp + 1, "proofs_cid"
         );
 
         vm.prank(owner);

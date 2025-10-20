@@ -3,12 +3,21 @@ pragma solidity ^0.8.20;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {ERC20CappedUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20CappedUpgradeable.sol";
-import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {
+    ERC20CappedUpgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20CappedUpgradeable.sol";
+import {
+    ERC20PermitUpgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract EcoYieldToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, ERC20CappedUpgradeable, ERC20PermitUpgradeable {
-
+contract EcoYieldToken is
+    Initializable,
+    OwnableUpgradeable,
+    ERC20Upgradeable,
+    ERC20CappedUpgradeable,
+    ERC20PermitUpgradeable
+{
     string private constant _NAME = "EcoYield";
     string private constant _SYMBOL = "EYE";
     uint256 private constant _TOTAL_SUPPLY = 1_000_000_000 ether;
@@ -29,7 +38,10 @@ contract EcoYieldToken is Initializable, OwnableUpgradeable, ERC20Upgradeable, E
         super._mint(to, amount);
     }
 
-    function _update(address from, address to, uint256 value) internal override(ERC20CappedUpgradeable, ERC20Upgradeable) {
+    function _update(address from, address to, uint256 value)
+        internal
+        override(ERC20CappedUpgradeable, ERC20Upgradeable)
+    {
         super._update(from, to, value);
     }
 }

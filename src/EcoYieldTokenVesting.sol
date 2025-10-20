@@ -15,7 +15,6 @@ struct VestingBucketData {
 }
 
 contract EcoYieldTokenVesting is TokenVesting {
-
     constructor(address tokenAddress_) TokenVesting(tokenAddress_) {}
 
     function createVestingBuckets(VestingBucketData[] calldata buckets) public {
