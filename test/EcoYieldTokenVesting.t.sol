@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {Test, console} from "forge-std/Test.sol";
 import {EcoYieldTokenVesting, VestingBucketData} from "../src/EcoYieldTokenVesting.sol";
 import {TokenVesting} from "../src/TokenVesting.sol";
 import {EcoYieldToken} from "../src/EcoYieldToken.sol";
-import {VestingMerkles} from "./VestingMerkles.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract EcoYieldTokenVestingTest is Test {
     EcoYieldTokenVesting public tokenVesting;
@@ -31,20 +29,11 @@ contract EcoYieldTokenVestingTest is Test {
     address public owner;
     address public nonOwner;
 
-    address public proxyAdmin;
-
     function setUp() public {
         owner = makeAddr("owner");
         nonOwner = makeAddr("nonOwner");
 
-        proxyAdmin = makeAddr("proxyAdmin");
-        // 1. Deploy the EcoYieldToken implementation
-        EcoYieldToken implementation = new EcoYieldToken();
-        // 2. Prepare the initializer function call for EcoYieldToken
-        bytes memory data = abi.encodeWithSelector(EcoYieldToken.initialize.selector, owner);
-        // 3. Deploy the proxy for EcoYieldToken and initialize it
-        ecoYieldToken =
-            EcoYieldToken(address(new TransparentUpgradeableProxy(address(implementation), proxyAdmin, data)));
+        ecoYieldToken = new EcoYieldToken(owner);
 
         vm.prank(owner);
         tokenVesting = new EcoYieldTokenVesting(address(ecoYieldToken));
@@ -60,8 +49,9 @@ contract EcoYieldTokenVestingTest is Test {
         merkleProof3 = new bytes32[](1);
         merkleProof3[0] = 0xc5ffcb879a592bd1ed8d67b5d06d8880c67cf97b0121170bd8337223b4641e53;
 
+        uint256 cap = ecoYieldToken.cap();
         vm.prank(owner);
-        ecoYieldToken.mint(address(tokenVesting), 1_000_000_000 ether);
+        ecoYieldToken.transfer(address(tokenVesting), cap);
     }
 
     /// @notice This test verifies that the owner can create multiple vesting buckets at once.
@@ -95,14 +85,14 @@ contract EcoYieldTokenVestingTest is Test {
         vm.prank(owner);
         tokenVesting.createVestingBuckets(buckets);
 
-        (bool initialized1, bytes32 merkleRootValue1,,, uint256 immediateUnlockBpsValue1,,,) =
-            tokenVesting.vestingBuckets(bucketId1);
+        (bool initialized1, bytes32 merkleRootValue1,, uint256 totalAllocatedAmount1, uint256 immediateUnlockBpsValue1,,,)
+ = tokenVesting.vestingBuckets(bucketId1);
         assertTrue(initialized1, "Bucket 1 should be initialized");
         assertEq(merkleRootValue1, merkleRoot, "Bucket 1 merkle root mismatch");
         assertEq(immediateUnlockBpsValue1, 1000, "Bucket 1 immediate unlock bps mismatch");
 
-        (bool initialized2, bytes32 merkleRootValue2,,, uint256 immediateUnlockBpsValue2,,,) =
-            tokenVesting.vestingBuckets(bucketId2);
+        (bool initialized2, bytes32 merkleRootValue2,, uint256 totalAllocatedAmount2, uint256 immediateUnlockBpsValue2,,,)
+ = tokenVesting.vestingBuckets(bucketId2);
         assertTrue(initialized2, "Bucket 2 should be initialized");
         assertEq(merkleRootValue2, merkleRoot, "Bucket 2 merkle root mismatch");
         assertEq(immediateUnlockBpsValue2, 2000, "Bucket 2 immediate unlock bps mismatch");
@@ -125,7 +115,7 @@ contract EcoYieldTokenVestingTest is Test {
         });
 
         vm.prank(nonOwner);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, nonOwner));
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, nonOwner));
         tokenVesting.createVestingBuckets(buckets);
     }
 
