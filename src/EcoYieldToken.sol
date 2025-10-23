@@ -10,18 +10,11 @@ contract EcoYieldToken is ERC20, ERC20Capped, ERC20Permit {
     string private constant _SYMBOL = "EYE";
     uint256 private constant _TOTAL_SUPPLY = 1_000_000_000 ether;
 
-    constructor(address recipient_)
-        ERC20(_NAME, _SYMBOL)
-        ERC20Capped(_TOTAL_SUPPLY)
-        ERC20Permit(_NAME)
-    {
+    constructor(address recipient_) ERC20(_NAME, _SYMBOL) ERC20Capped(_TOTAL_SUPPLY) ERC20Permit(_NAME) {
         _mint(recipient_, _TOTAL_SUPPLY);
     }
 
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20Capped, ERC20)
-    {
+    function _update(address from, address to, uint256 value) internal override(ERC20Capped, ERC20) {
         super._update(from, to, value);
     }
 }
