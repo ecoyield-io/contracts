@@ -85,22 +85,14 @@ contract EcoYieldTokenVestingTest is Test {
         vm.prank(owner);
         tokenVesting.createVestingBuckets(buckets);
 
-        (
-            bool initialized1,
-            bytes32 merkleRootValue1,,
-            ,
-            uint256 immediateUnlockBpsValue1,,,
-        ) = tokenVesting.vestingBuckets(bucketId1);
+        (bool initialized1, bytes32 merkleRootValue1,,, uint256 immediateUnlockBpsValue1,,,) =
+            tokenVesting.vestingBuckets(bucketId1);
         assertTrue(initialized1, "Bucket 1 should be initialized");
         assertEq(merkleRootValue1, merkleRoot, "Bucket 1 merkle root mismatch");
         assertEq(immediateUnlockBpsValue1, 1000, "Bucket 1 immediate unlock bps mismatch");
 
-        (
-            bool initialized2,
-            bytes32 merkleRootValue2,,
-            ,
-            uint256 immediateUnlockBpsValue2,,,
-        ) = tokenVesting.vestingBuckets(bucketId2);
+        (bool initialized2, bytes32 merkleRootValue2,,, uint256 immediateUnlockBpsValue2,,,) =
+            tokenVesting.vestingBuckets(bucketId2);
         assertTrue(initialized2, "Bucket 2 should be initialized");
         assertEq(merkleRootValue2, merkleRoot, "Bucket 2 merkle root mismatch");
         assertEq(immediateUnlockBpsValue2, 2000, "Bucket 2 immediate unlock bps mismatch");
