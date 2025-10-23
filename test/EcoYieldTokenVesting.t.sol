@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.29;
 
 import {Test, console} from "forge-std/Test.sol";
 import {EcoYieldTokenVesting, VestingBucketData} from "../src/EcoYieldTokenVesting.sol";
@@ -88,7 +88,7 @@ contract EcoYieldTokenVestingTest is Test {
         (
             bool initialized1,
             bytes32 merkleRootValue1,,
-            uint256 totalAllocatedAmount1,
+            ,
             uint256 immediateUnlockBpsValue1,,,
         ) = tokenVesting.vestingBuckets(bucketId1);
         assertTrue(initialized1, "Bucket 1 should be initialized");
@@ -98,7 +98,7 @@ contract EcoYieldTokenVestingTest is Test {
         (
             bool initialized2,
             bytes32 merkleRootValue2,,
-            uint256 totalAllocatedAmount2,
+            ,
             uint256 immediateUnlockBpsValue2,,,
         ) = tokenVesting.vestingBuckets(bucketId2);
         assertTrue(initialized2, "Bucket 2 should be initialized");
